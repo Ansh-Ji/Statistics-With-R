@@ -1,2 +1,2 @@
-# Statistics-With-R-
+# Statistics-With-R
 Specialization course offered by Duke University 
