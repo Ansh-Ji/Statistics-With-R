@@ -1,0 +1,278 @@
+---
+title: "Statistical inference with the GSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(statsr)
+```
+
+### Load data
+Since 1972, the [General Social Survey](https://d3c33hcgiwev3.cloudfront.net/_5db435f06000e694f6050a2d43fc7be3_gss.Rdata?Expires=1599177600&Signature=QwzvEmaDHhZjq7MM3fsD9PDaf2G38EwX-ntS3WBIhLO8uZ-Z3MjI3ToVRRJ4aQatgg0tAOuSh3zgZN0ky3-3OmTr4tXek1mLMKeGEmC9V9UMz5XfLuoesaWR6Gk~1oJi7fzbCYO2~CD2mQvApUyAMX0gGyv7PxsnzsoCuZ3rcfU_&Key-Pair-Id=APKAJLTNE6QMUY6HBC5A) (GSS) has been monitoring societal change and studying the growing complexity of American society.
+
+```{r load-data}
+load("gss.Rdata")
+gss<-tibble(gss)
+dim(gss)
+```
+
+* * *
+
+## Part 1: Data
+
+### Background
+The [General Social Survey](https://d3c33hcgiwev3.cloudfront.net/_5db435f06000e694f6050a2d43fc7be3_gss.Rdata?Expires=1599177600&Signature=QwzvEmaDHhZjq7MM3fsD9PDaf2G38EwX-ntS3WBIhLO8uZ-Z3MjI3ToVRRJ4aQatgg0tAOuSh3zgZN0ky3-3OmTr4tXek1mLMKeGEmC9V9UMz5XfLuoesaWR6Gk~1oJi7fzbCYO2~CD2mQvApUyAMX0gGyv7PxsnzsoCuZ3rcfU_&Key-Pair-Id=APKAJLTNE6QMUY6HBC5A) (GSS) is a sociological survey used to collect information and keep a historical record of the concerns, experiences, attitudes, and practices of residents of the United States. GSS questions cover a diverse range of issues including national spending priorities, marijuana use, crime and punishment, race relations, quality of life, confidence in institutions, and sexual behavior. The data-set used for this project is an extract of the General Social Survey (GSS) Cumulative File 1972-2012. It consists of 57061 observations with 114 variables. Each variable corresponds to a specific question asked to the respondent.
+
+### Methodology
+According to [Wikipedia](https://en.wikipedia.org/wiki/General_Social_Survey), The GSS survey is conducted face-to-face with an in-person interview by NORC at the University of Chicago. The target population is adults (18+) living in households in the United States. Respondents are random sampled from a mix of urban, suburban, and rural geographic areas. Participation in the study is strictly voluntary.
+
+### The scope of inference
+The sample data should allow us to generalize to the population of interest. It is a survey of 57061 U.S adults aged 18 years or older. The survey is based on random sampling. However, there is no causation can be established as GSS is an observation study that can only establish correlation/association between variables. In addition, potential biases are associated with non-response because this is a voluntary in-person survey that takes approximately 90 minutes. Some potential respondents may choose not to participate.
+
+
+* * *
+
+## Part 2: Research question
+
+*Do individuals who identify as atheist or non-religious express significantly different views on Controversial Social Issues and economic matters than people of religious persuasion? *
+  *This research question touches on a larger question of the relationship between rationalism and individualism. Does the absence of an after-life and ultimate judge leave atheists feeling less concerned with social welfare?*
+ 
+* * *
+
+## Part 3: Exploratory data analysis
+
+Looking at the major religions recorded in the survey
+```{r}
+gss %>%filter(year == 2012) %>%count(`relig`)
+```
+
+Selecting the attributes that are of interest for the study:
+```{r}
+target_data<-select(gss,c('year','coninc','natsoc','relig','attend','homosex','abany'),)
+
+#We wish to see the recent trends so considering only year 2012
+gss_2012<-target_data%>%filter(year==2012)%>%
+                mutate(is_religious=factor(ifelse(relig=="None",'no','yes')))
+
+prop.table(table(gss_2012$is_religious))
+```
+
+Approximately *20%* of the respondents in the year 2012 identified themselves as non-believers or atheists while the remaining *80%* of the respondents identified themselves to be part of some major religion
+
+### *Is being religious and attending religious services the same?*
+* * *
+```{r}
+ggplot(gss_2012,aes(x=attend, fill =is_religious))+
+  ggtitle("Respondent service attendence in 2012 survey") +
+  xlab("") + ylab("Respondents") + 
+  labs(fill = "Religious") +
+  geom_bar(position = position_dodge()) +
+  scale_x_discrete(labels = function(attend) lapply(strwrap(attend, width = 10,
+                                        simplify = FALSE), paste, collapse="\n"))
+```
+
+We can notice from the above plot that being religious and attending the service are not the same. There are respondents who are religious but do not attend religious services and many non religious respondents who attend the religious services.
+
+The GSS variable and survey questions along with the tabulated results are:
+
+### The Economic Matter
+
+### *Question -1 address national spending on Social Security*
+- natsoc: We are faced with many problems in this country, none of which can be solved easily or inexpensively. I’m going to name some of these problems, and for each one I’d like you to tell me whether you think we’re spending too much money on it, too little money, or about the right amount. Social Security.
+
+```{r}
+with(gss_2012,table(natsoc,is_religious))
+```
+### The Social Matter
+
+### *Question -2 address attiude of people regarding Homosexual sex*
+
+- homosex:HOMOSEXUAL SEX RELATIONS. What about sexual relations between two adults of the same sex?
+```{r}
+with(gss_2012,table(homosex,is_religious))
+```
+### *Question -3 address attiude of people regarding abortion*
+
+- abortion if women wants for any reason
+- abany: Please tell me whether or not you think it should be possible for a pregnant woman to obtain a legal abortion if: g. The woman wants it for any reason?
+```{r}
+with(gss_2012,table(abany,is_religious))
+```
+### *Question -4 addresses the relationship between spirituality and family income *
+
+- Finally, the study considers the relationship between spirituality and family income 
+- coninc: This continuous numeric variable is the total family income and is therefore only an indirect measure of the income of the respondent. .
+
+```{r, family_income_boxplot}
+gss_2012 %>% 
+  filter(!is.na(coninc), !is.na(is_religious)) %>%
+ggplot(aes(x = is_religious, y = coninc)) +
+  ggtitle("Family Income in 2012 survey") +
+  xlab("Religious") + ylab("Constant Dollars") + 
+  geom_boxplot()
+```
+
+However, it may provide some insight into the relationship between religion and wealth (although we cannot conclude anything about causality). The box plot below suggests both groups have about equal IQRs, but that non-religious persons may have slightly higher median incomes
+
+## Part 4: Inference
+
+### *Question 1 concerns Social Security Spending.* 
+
+Again, the question posed to respondents was:
+We are faced with many problems in this country, none of which can be solved easily or inexpensively. I’m going to name some of these problems, and for each one I’d like you to tell me whether you think we’re spending too much money on it, too little money, or about the right amount. Social Security.
+
+A bar chart reveals that regardless of religiosity, respondents in the 2012 GSS survey overwhelming felt the U.S. spends too little on Social Security. However, because so many more respondents are religious, it is difficult to determine at a glance whether the groups differ
+
+```{r}
+gss_natsoc <- gss_2012 %>% select(c("natsoc","is_religious"),)%>%
+  filter(!is.na(natsoc), !is.na(is_religious))
+```
+
+```{r}
+ggplot(gss_natsoc,aes(x=natsoc, fill =is_religious))+
+  ggtitle("Social Security Spending in 2012 survey") +
+  xlab("") + ylab("Respondents") + 
+  labs(fill = "Religious") +
+  geom_bar(position = position_dodge()) +
+  scale_x_discrete(labels = function(natsoc) lapply(strwrap(natsoc, width = 10,
+                                        simplify = FALSE), paste, collapse="\n"))
+```
+
+Do religious and non-religious respondents differ in their attitudes about whether the U.S. spends too little on Social Security? Conduct a hypothesis test using the two-sample proportion test. This test applies if three conditions are met:
+
+- Independence within groups: this is a random sample from <10% of population.
+- Independence between groups: this is unpaired data.
+- Sample size/ skew: at least 10 successes and failures from both the religious and non-religious groups.
+
+Our null hypothesis is H0: the proportions of individuals favoring more spending on Social Security is the same regardless of religious identification (religious vs. non-religious). 
+
+The alternative hypothesis is HA: The proportions differ by religious identification.
+```{r}
+gss_natsoc <- gss_natsoc %>% 
+  mutate(response = ifelse(natsoc == "Too Little", "Too Little", "Other"))
+prop.test(table(gss_natsoc$is_religious, gss_natsoc$response), correct = FALSE)
+```
+### Conclusion
+
+- The *p-value = 0.08* is greater than the alpha = .05 level of significance.
+- We do not have enough evidence to reject the null hypothesis.
+- There is not sufficient evidence to conclude that religious people are more supportive of spending more money on Social Security than non-religious people. 
+This may be an indication that attitudes on social welfare are not driven by moral considerations inculcated by religious institutions.
+
+### *Question 2 concerns attitudes regarding homosexuality.* 
+
+Again, the question posed to respondents was: What about sexual relations between two adults of the same sex?
+
+A bar chart reveals that non-religious individuals appear to have no issues with homosexuality. Religious individuals, on the other hand, often are strongly opposed.
+```{r, homosexual}
+gss_homosex<-gss_2012%>%select(c("homosex","is_religious"),)%>%
+                  filter(!is.na(homosex),!is.na(is_religious))
+
+ggplot(gss_homosex,aes(x=homosex, fill =is_religious))+
+  ggtitle("Response on Homosexual relationships in 2012 survey") +
+  xlab("") + ylab("Respondents") + 
+  labs(fill = "Religious") +
+  geom_bar(position = position_dodge()) +
+  scale_x_discrete(labels = function(homosex) lapply(strwrap(homosex, width = 10,
+                                        simplify = FALSE), paste, collapse="\n"))
+```
+
+A hypothesis test using the two-sample proportion test. This test applies if three conditions are met:
+- Independence within groups: this is a random sample from <10% of population.
+- Independence between groups: this is unpaired data.
+- Sample size/ skew: at least 10 successes and failures from both the religious and non-religious groups.
+
+Our null hypothesis is H0: the proportions of respondents who believe homosexual relations are not wrong at all is the same for religious and non-religious respondents. 
+The alternative hypothesis is HA: that the proportions differ.
+
+```{r}
+gss_homosex <- gss_homosex %>% mutate(response = ifelse(homosex == "Not Wrong At All", "Not Wrong at all", "Other"))
+prop.test(table(gss_homosex$is_religious, gss_homosex$response), correct = FALSE)
+```
+### Conclusion
+- The *p-value 2.2e-16* is much less than the alpha = .05 level of significance.
+- We have enough evidence to reject the null hypothesis and conclude that religious people and non-religious people hold differing attitudes regarding homosexual relations. 
+
+### *Question 3 concerns attitudes regarding abortion.*
+
+Again, the question posed to respondents was: Please tell me whether or not you think it should be possible for a pregnant woman to obtain a legal abortion if: g. The woman wants it for any reason?
+```{r, abortion}
+gss_abortion<-gss_2012%>%select(c("abany","is_religious"),)%>%
+                  filter(!is.na(abany),!is.na(is_religious))
+
+ggplot(gss_abortion,aes(x=abany, fill =is_religious))+
+  ggtitle("Response on Abortion in 2012 survey") +
+  xlab("") + ylab("Respondents") + 
+  labs(fill = "Religious") +
+  geom_bar(position = position_dodge()) +
+  scale_x_discrete(labels = function(abany) lapply(strwrap(abany, width = 10,
+                                        simplify = FALSE), paste, collapse="\n"))
+```
+
+A hypothesis test using the two-sample proportion test. This test applies if three conditions are met:
+- Independence within groups: this is a random sample from <10% of population.
+- Independence between groups: this is unpaired data.
+- Sample size/ skew: at least 10 successes and failures from both the religious and non-religious groups.
+
+Our null hypothesis is H0: the proportions of respondents who believe abortions for any reason are not wrong at all is the same for religious and non-religious respondents. 
+The alternative hypothesis is HA: that the proportions differ.
+
+```{r}
+prop.test(table(gss_abortion$is_religious, gss_abortion$abany), correct = FALSE)
+```
+### Conclusion:
+- The *p-value 2.7e-14* is much less than the alpha = .05 level of significance.
+- We have enough evidence to reject the null hypothesis and conclude that religious people and non-religious people hold differing attitudes regarding a woman obtaining abortion via legal means.
+
+### *Question-04 considers the relationship between spirituality and family income.*
+
+This continuous numeric variable is the total family income and is therefore only an indirect measure of the income of the respondent.
+
+Perform a one-sample t-test to estimate a confidence interval of family income for religious individuals and non-religious individuals.
+
+First check conditions for the sampling distribution of x:
+
+- Independence: this is a random sample without replacement from n<10% of population.
+- The observations come from a nearly normal distribution (verify with normal probability plot).
+```{r, normal Q-Q}
+gss_coninc_2012 <- gss_2012%>% filter(!is.na(coninc), !is.na(is_religious))
+qqnorm(gss_coninc_2012$coninc)
+qqline(gss_coninc_2012$coninc)
+```
+
+
+It appears that our sample violates the normality condition because it skews significantly to the right. However, we will continue with the analysis.
+
+Construct a 95% confidence interval for family income for religious and non-religious individuals.
+
+```{r}
+L = gss_2012$is_religious == "yes"
+inc.relig = gss_2012[L,]$coninc
+inc.nonrelig = gss_2012[!L,]$coninc
+t.test(inc.relig)
+t.test(inc.nonrelig)
+```
+
+The 95% confidence interval of family income for religious individuals is *$47,151.70 +/- $2,378.18.*
+
+The 95% confidence interval of family income for non-religious individuals is *$53,310.96 +/- $5,392.12.*
+
+Are these family incomes significantly different? Perform a two-sample mean comparison test.
+
+```{r}
+t.test(inc.relig,inc.nonrelig)
+```
+### Conclusion:
+- The *p-value 0.0404* is less than the alpha = .05 level of significance.
+- We have enough evidence to reject H0 that religious and non religious people have identical family incomes. 
+- This may be an indication that non-religious people are more occupied with material concerns while religious people have a relatively greater focus on non-materialistic issues.
